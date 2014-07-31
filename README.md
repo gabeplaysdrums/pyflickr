@@ -10,6 +10,7 @@ Dependencies:
     * sudo pip install threadpool
 * exifread
     * sudo pip install exifread
-* PIL with JPEG support:
-    * brew install libjpeg
-    * sudo pip install PIL
+* hachoir-metadata
+    * sudo pip install hachoir-core
+    * sudo pip install hachoir-parser
+    * sudo pip install hachoir-metadata
