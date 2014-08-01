@@ -20,9 +20,6 @@ import threadpool
 MAX_PICTURE_FILE_SIZE = 209715200 # 200 MB
 MAX_MOVIE_FILE_SIZE = 1073700000 # 1 GB
 
-PHOTO_PATTERNS = ('*.jpg', '*.jpeg', '*.png', '*.bmp')
-MOVIE_PATTERNS = ('*.mov', '*.mp4', '*.mpg', '*.mpeg', '*.avi')
-
 def parse_command_line():
 
     parser = OptionParser(
@@ -168,7 +165,6 @@ if __name__ == '__main__':
         patterns += PHOTO_PATTERNS
     if options.upload_movies:
         patterns += MOVIE_PATTERNS
-    patterns += tuple(x.upper() for x in patterns)
 
     paths = []
     excluded_paths = set()
@@ -191,7 +187,7 @@ if __name__ == '__main__':
                         if fnmatch.fnmatch(path, pat):
                             upload_count += 1
                             filemeta, title, description, date_taken = \
-                                get_photo_meta(path, row['relpath'], row['filehash'])
+                                get_photo_meta(path, row['relpath'], row['filehash'], row['filesize'])
                             post_upload_args.append((
                                 upload_count,
                                 title,
@@ -369,31 +365,39 @@ if __name__ == '__main__':
 
                 upload_count += 1
                 count = upload_count
-                relpath = path.split(input_root)[1]
+                relpath = os.path.relpath(path, input_root)
                 log('[Start] #%d/%d: %s' % (count, upload_total, relpath))
                 upload_start = datetime.now()
+
+                filesize = os.path.getsize(path)
+
+                if is_picture(path) and filesize > MAX_PICTURE_FILE_SIZE:
+                    log('[Abort] #%d/%d: %s Picture is too large to upload' % (count, upload_total, relpath))
+                    return
+
+                if is_movie(path) and filesize > MAX_MOVIE_FILE_SIZE:
+                    log('[Abort] #%d/%d: %s Movie is too large to upload' % (count, upload_total, relpath))
+                    return
+
                 filehash = None
                 with open(path, 'rb') as f:
                     filehash = str(hashlib.md5(f.read()).hexdigest())
 
                 filemeta, title, description, date_taken = \
-                    get_photo_meta(path, relpath, filehash)
+                    get_photo_meta(path, relpath, filehash, filesize)
                 
                 photo_id = None
-
-                if options.is_dry_run:
-                    return
 
                 if title in known_titles:
                     # if found in the list of known titles, don't attempt to
                     # upload or fix metadata
-                    log('[Known] #%d/%d: %s' % (count, upload_total, relpath))
+                    log('[Abort] #%d/%d: %s Photo has already been uploaded' % (count, upload_total, relpath))
                     return
 
                 if title in excluded_titles:
                     log('[Skip] #%d/%d: %s' % (count, upload_total, relpath))
                     photo_id = excluded_titles[title]
-                elif options.upload_new_files:
+                elif options.upload_new_files and not options.is_dry_run:
                     # upload the photo!
                     res = flickr.upload(
                         filename=path,
@@ -407,7 +411,7 @@ if __name__ == '__main__':
                     )
                     photo_id = res.find('photoid').text.strip()
                 else:
-                    log('[No Upload] #%d/%d: %s' % (count, upload_total, relpath))
+                    log('[Abort] #%d/%d: %s Not uploading new photos' % (count, upload_total, relpath))
                     return
 
                 upload_end = datetime.now()

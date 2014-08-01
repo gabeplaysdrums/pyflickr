@@ -115,7 +115,7 @@ def get_photo_dates(path):
         date_taken
     )
 
-def get_photo_meta(path, relpath, filehash):
+def get_photo_meta(path, relpath, filehash, filesize):
     date_created, date_modified, exif_date, mov_date, date_taken = \
         get_photo_dates(path)
     filemeta = {
@@ -124,7 +124,7 @@ def get_photo_meta(path, relpath, filehash):
         'created': date_created.strftime(FLICKR_DATE_FORMAT),
         'modified': date_modified.strftime(FLICKR_DATE_FORMAT),
         'filehash': filehash,
-        'filesize': os.path.getsize(path),
+        'filesize': filesize,
         'exif_original_date': exif_date.strftime(FLICKR_DATE_FORMAT) if exif_date else None,
         'mov_created_date': mov_date.strftime(FLICKR_DATE_FORMAT) if mov_date else None,
     }
@@ -136,3 +136,24 @@ def get_photo_meta(path, relpath, filehash):
         description,
         date_taken
     )
+
+
+from fnmatch import fnmatch
+
+PHOTO_PATTERNS = ('*.jpg', '*.jpeg', '*.png', '*.bmp')
+MOVIE_PATTERNS = ('*.mov', '*.mp4', '*.mpg', '*.mpeg', '*.avi')
+
+PHOTO_PATTERNS += tuple(x.upper() for x in PHOTO_PATTERNS)
+MOVIE_PATTERNS += tuple(x.upper() for x in MOVIE_PATTERNS)
+
+def is_picture(filename):
+    for pat in PHOTO_PATTERNS:
+        if fnmatch(filename, pat):
+            return True
+    return False
+
+def is_movie(filename):
+    for pat in MOVIE_PATTERNS:
+        if fnmatch(filename, pat):
+            return True
+    return False
