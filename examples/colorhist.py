@@ -29,9 +29,12 @@ if len(sys.argv) > 2 and sys.argv[2] == 'visualize':
 r = numpy.asarray(im.convert( "RGB", (1,0,0,0, 1,0,0,0, 1,0,0,0) ))
 g = numpy.asarray(im.convert( "RGB", (0,1,0,0, 0,1,0,0, 0,1,0,0) ))
 b = numpy.asarray(im.convert( "RGB", (0,0,1,0, 0,0,1,0, 0,0,1,0) ))
-hr, h_bins = numpy.histogram(r, bins=64)
-hg, h_bins = numpy.histogram(g, bins=64)
-hb, h_bins = numpy.histogram(b, bins=64)
+MAX_VAL = 256
+NUM_BINS = 64
+bins = range(0, MAX_VAL + 1, MAX_VAL / NUM_BINS)
+hr, h_bins = numpy.histogram(r, bins=bins)
+hg, h_bins = numpy.histogram(g, bins=bins)
+hb, h_bins = numpy.histogram(b, bins=bins)
 hist = numpy.array([hr, hg, hb]).ravel()
 buf = bytearray(4 * 64 * 3)
 
@@ -39,3 +42,8 @@ with open('hist.bin', 'wb') as f:
     for i, data in enumerate(hist):
         struct.pack_into('>I', buf, 4*i, data)
     f.write(buf)
+
+for idx, count in enumerate(hist):
+    plt.bar(idx, count)
+
+plt.show()
