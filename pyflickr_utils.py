@@ -43,7 +43,7 @@ def make_csv_writer(csvfile):
     ))
 
 def get_uploaded_photos(flickr):
-    photos = []
+    photos = set()
     num_pages = 0
     total = 0
     count = 0
@@ -55,13 +55,17 @@ def get_uploaded_photos(flickr):
         for photo in rsp.find('photos').getchildren():
             title = photo.get('title')
             photo_id = photo.get('id')
-            photos.append((photo_id, title))
+            photos.add((photo_id, title))
             count += 1
         return num_pages, total, photos, count
     (num_pages, total, photos, count) = fetch(1, num_pages, total, photos, count)
     for page in range(2, num_pages + 1):
         (num_pages, total, photos, count) = fetch(page, num_pages, total, photos, count)
-    assert count == total
+
+    # for some reason, flickr seems to under-report the total
+    print 'photos found:', count, 'vs. total reported by flickr api:', total
+    assert count >= total
+    
     return photos
 
 
