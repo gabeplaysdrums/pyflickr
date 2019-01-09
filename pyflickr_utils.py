@@ -102,7 +102,7 @@ def get_uploaded_photos(flickr, max_count=None):
 
 import urllib2
 
-def download_url(url, filename_prefix):
+def download_url(url, filename_prefix, directory):
     
     req = urllib2.urlopen(url)
 
@@ -119,7 +119,7 @@ def download_url(url, filename_prefix):
 
     filename = filename_prefix + filename_ext
 
-    f = open(filename, 'wb')
+    f = open(os.path.join(directory, filename), 'wb')
 
     total_bytes = int(req.info()['Content-Length'])
     print "Downloading: %s Bytes: %s" % (filename, total_bytes)

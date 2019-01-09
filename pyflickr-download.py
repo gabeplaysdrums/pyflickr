@@ -1,6 +1,6 @@
 #!/usr/bin/python
 """
-Remove duplicate photos on Flickr
+Download photos from Flickr
 """
 
 from csv import DictReader
@@ -14,7 +14,7 @@ import urllib
 def parse_command_line():
 
     parser = OptionParser(
-        usage = '%prog [options] uploaded.csv'
+        usage = '%prog [options] OUTPUT_DIR'
     )
 
     """
@@ -39,20 +39,16 @@ def parse_command_line():
 
     (options, args) = parser.parse_args()
 
-    """
     if len(args) < 1:
         parser.print_usage()
         sys.exit(1)
-    """
 
     return (options, args)
 
 if __name__ == "__main__":
 
     (options, args) = parse_command_line()
-    """
-    input_path = args[0]
-    """
+    output_dir = args[0]
 
     print 'Authenticating ...'
     flickr = flickrapi.FlickrAPI(API_KEY, API_SECRET)
@@ -65,6 +61,9 @@ if __name__ == "__main__":
     uploaded_photos = get_uploaded_photos(flickr, options.max_count)
 
     print 'Found %d uploaded photos' % (len(uploaded_photos),)
+
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     for (photo_id, title) in uploaded_photos:
         print 'getting source URL for photo id=%s' % (photo_id,)
@@ -85,7 +84,7 @@ if __name__ == "__main__":
                 largest_source = source
                 largest_label = label
         print 'URL: %s' % (largest_source,)
-        download_url(largest_source, photo_id)
+        download_url(largest_source, photo_id, output_dir)
 
     """
 
