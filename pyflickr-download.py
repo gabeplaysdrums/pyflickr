@@ -60,13 +60,16 @@ if __name__ == "__main__":
     print 'Getting previously uploaded photos ...'
     uploaded_photos = get_uploaded_photos(flickr, options.max_count)
 
-    print 'Found %d uploaded photos' % (len(uploaded_photos),)
+    total_count = len(uploaded_photos)
+    print '\nFound %d uploaded photos\n' % (total_count,)
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
+    count = 0
+
     for (photo_id, title) in uploaded_photos:
-        print 'getting source URL for photo id=%s' % (photo_id,)
+        #print 'getting source URL for photo id=%s' % (photo_id,)
         rsp = flickr.photos.getSizes(photo_id=photo_id)
         largest_source = None
         largest_label = None
@@ -83,8 +86,9 @@ if __name__ == "__main__":
                 largest_height = height
                 largest_source = source
                 largest_label = label
-        print 'URL: %s' % (largest_source,)
-        download_url(largest_source, photo_id, output_dir)
+        #print 'URL: %s' % (largest_source,)
+        count += 1
+        download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
 
     """
 

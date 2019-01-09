@@ -102,7 +102,7 @@ def get_uploaded_photos(flickr, max_count=None):
 
 import urllib2
 
-def download_url(url, filename_prefix, directory):
+def download_url(url, filename_prefix, directory, progress_prefix=''):
     
     req = urllib2.urlopen(url)
 
@@ -122,7 +122,7 @@ def download_url(url, filename_prefix, directory):
     f = open(os.path.join(directory, filename), 'wb')
 
     total_bytes = int(req.info()['Content-Length'])
-    print "Downloading: %s Bytes: %s" % (filename, total_bytes)
+    print '%sDownloading: %s Bytes: %s' % (progress_prefix, filename, total_bytes)
 
     downloaded_bytes = 0
     block_size = 8192
