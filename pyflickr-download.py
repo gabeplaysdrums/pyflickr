@@ -53,8 +53,26 @@ if __name__ == "__main__":
     count = 0
 
     for (photo_id, title) in uploaded_photos:
-        #print 'getting source URL for photo id=%s' % (photo_id,)
-        rsp = flickr.photos.getSizes(photo_id=photo_id)
+        # download info
+        while True:
+            try:
+                rsp = flickr.photos.getInfo(photo_id=photo_id)
+            except flickrapi.exceptions.FlickrError:
+                continue
+            break
+
+        open(os.path.join(output_dir, photo_id + '.info.xml'), 'w').write(ElementTree.tostring(rsp, encoding='utf8', method='xml'))
+
+        # download sizes
+        while True:
+            try:
+                rsp = flickr.photos.getSizes(photo_id=photo_id)
+            except flickrapi.exceptions.FlickrError:
+                continue
+            break
+
+        open(os.path.join(output_dir, photo_id + '.sizes.xml'), 'w').write(ElementTree.tostring(rsp, encoding='utf8', method='xml'))
+
         largest_source = None
         largest_label = None
         largest_width = 0
@@ -73,9 +91,6 @@ if __name__ == "__main__":
         #print 'URL: %s' % (largest_source,)
         count += 1
 
-        # download metadata
-        open(os.path.join(output_dir, photo_id + '.info.xml'), 'w').write(ElementTree.tostring(flickr.photos.getInfo(photo_id=photo_id), encoding='utf8', method='xml'))
-        
         # download photo
         download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
 
