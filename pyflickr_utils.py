@@ -6,6 +6,7 @@ import json
 from csv import DictWriter
 import os
 from datetime import datetime
+import sys
 
 API_KEY = 'f5b40cdc2dfac381aefcfd48687ddaba'
 API_SECRET = '30bce1a79b59ea4a'
@@ -42,32 +43,99 @@ def make_csv_writer(csvfile):
         'server',
     ))
 
-def get_uploaded_photos(flickr):
+# Print iterations progress
+def print_progress(iteration, total, prefix='', suffix='', decimals=1, bar_length=50):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        bar_length  - Optional  : character length of bar (Int)
+    """
+    str_format = "{0:." + str(decimals) + "f}"
+    percents = str_format.format(100 * (iteration / float(total)))
+    filled_length = int(round(bar_length * iteration / float(total)))
+    bar = u'\u2588' * filled_length + '-' * (bar_length - filled_length)
+
+    sys.stdout.write('\r%s |%s| %s%s %s' % (prefix, bar, percents, '%', suffix)),
+
+    if iteration == total:
+        sys.stdout.write('\n')
+    sys.stdout.flush()
+
+def get_uploaded_photos(flickr, max_count=None):
     photos = set()
     num_pages = 0
     total = 0
     count = 0
-    def fetch(page, num_pages, total, photos, count):
+    def fetch(page, num_pages, total, photos, count, max_count):
+        if max_count is not None and count >= max_count:
+            return num_pages, total, photos, count
         rsp = flickr.photos_search(user_id='me', per_page=500, page=page)
         if page == 1:
             num_pages = int(rsp.find('photos').get('pages'))
             total = int(rsp.find('photos').get('total'))
+        print_progress(page, num_pages)
         for photo in rsp.find('photos').getchildren():
             title = photo.get('title')
             photo_id = photo.get('id')
             photos.add((photo_id, title))
             count += 1
+            if max_count is not None and count >= max_count:
+                break
         return num_pages, total, photos, count
-    (num_pages, total, photos, count) = fetch(1, num_pages, total, photos, count)
+    (num_pages, total, photos, count) = fetch(1, num_pages, total, photos, count, max_count)
     for page in range(2, num_pages + 1):
-        (num_pages, total, photos, count) = fetch(page, num_pages, total, photos, count)
+        (num_pages, total, photos, count) = fetch(page, num_pages, total, photos, count, max_count)
 
-    # for some reason, flickr seems to under-report the total
-    print 'photos found:', count, 'vs. total reported by flickr api:', total
-    assert count >= total
+    if max_count is None:
+        # for some reason, flickr seems to under-report the total
+        print 'photos found:', count, 'vs. total reported by flickr api:', total
+        assert count >= total
+    else:
+        sys.stdout.write('\n')
     
     return photos
 
+import urllib2
+
+def download_url(url, filename_prefix):
+    
+    req = urllib2.urlopen(url)
+
+    filename_ext = None
+
+    if req.info().has_key('Content-Disposition'):
+        # If the response has Content-Disposition, we take file name from it
+        filename = req.info()['Content-Disposition'].split('filename=')[1]
+        if filename[0] == '"' or filename[0] == "'":
+            filename = filename[1:-1]
+        filename_ext = os.path.splitext(filename)[-1]
+    else:
+        filename_ext = '.' + url.split('.')[-1]
+
+    filename = filename_prefix + filename_ext
+
+    f = open(filename, 'wb')
+
+    total_bytes = int(req.info()['Content-Length'])
+    print "Downloading: %s Bytes: %s" % (filename, total_bytes)
+
+    downloaded_bytes = 0
+    block_size = 8192
+    while True:
+        buffer = req.read(block_size)
+        if not buffer:
+            break
+
+        downloaded_bytes += len(buffer)
+        f.write(buffer)
+        print_progress(downloaded_bytes, total_bytes);
+
+    f.close()
 
 import exifread
 
