@@ -14,7 +14,7 @@ Dependencies:
     *Note*: If installing on MacOS, you may need to ignore six:
 
     ```
-    sudo pip install flickr-api --ignore-installed six
+    sudo pip install flickrapi --ignore-installed six
     ```
 
 * threadpool
