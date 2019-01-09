@@ -10,6 +10,7 @@ import flickrapi
 import flickrapi.shorturl
 import sys
 import urllib
+from xml.etree import ElementTree
 
 def parse_command_line():
 
@@ -54,8 +55,10 @@ if __name__ == "__main__":
     flickr = flickrapi.FlickrAPI(API_KEY, API_SECRET)
     flickr.authenticate_console(perms='delete')
 
+    """
     photos = dict()
     dupe_count = 0
+    """
 
     print 'Getting previously uploaded photos ...'
     uploaded_photos = get_uploaded_photos(flickr, options.max_count)
@@ -88,6 +91,11 @@ if __name__ == "__main__":
                 largest_label = label
         #print 'URL: %s' % (largest_source,)
         count += 1
+
+        # download metadata
+        open(os.path.join(output_dir, photo_id + '.info.xml'), 'w').write(ElementTree.tostring(flickr.photos.getInfo(photo_id=photo_id), encoding='utf8', method='xml'))
+        
+        # download photo
         download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
 
     """
