@@ -52,9 +52,22 @@ if __name__ == "__main__":
     uploaded_photos = get_uploaded_photos(flickr, options.max_count)
 
     total_count = len(uploaded_photos)
-    print '\nFound %d uploaded photos\n' % (total_count,)
+    print '\nFound %d uploaded photos' % (total_count,)
 
     append = os.path.exists(options.csv_output_path)
+
+    # Prune previously downloaded photos
+    if append:
+        uploaded_photos = dict(uploaded_photos)
+        with open(options.csv_output_path) as csvfile:
+            reader = DictReader(csvfile)
+            for row in reader:
+                photo_id = row['photo_id']
+                del uploaded_photos[photo_id]
+        uploaded_photos = set(uploaded_photos.items())
+        total_count = len(uploaded_photos)
+
+    print 'Downloading %d photos\n' % (total_count,)
 
     with open(options.csv_output_path, 'ab') as csvfile:
         writer = make_csv_writer(csvfile)
