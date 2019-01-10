@@ -11,6 +11,8 @@ import flickrapi.shorturl
 import sys
 import urllib
 from xml.etree import ElementTree
+from datetime import datetime
+import hashlib
 
 def parse_command_line():
 
@@ -22,6 +24,11 @@ def parse_command_line():
         '--max-count', dest='max_count', default=None,
         help='max number of photos to download',
         type='int',
+    )
+
+    parser.add_option(
+        '--output-csv', dest='csv_output_path', default='downloaded.csv',
+        help='path to output CSV file',
     )
 
     (options, args) = parser.parse_args()
@@ -47,59 +54,90 @@ if __name__ == "__main__":
     total_count = len(uploaded_photos)
     print '\nFound %d uploaded photos\n' % (total_count,)
 
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
+    append = os.path.exists(options.csv_output_path)
 
-    count = 0
+    with open(options.csv_output_path, 'ab') as csvfile:
+        writer = make_csv_writer(csvfile)
 
-    for (photo_id, title) in uploaded_photos:
-        # download info
-        while True:
-            try:
-                rsp = flickr.photos.getInfo(photo_id=photo_id)
-            except Exception as e:
-                print '[Error] %s.  Retrying ...' % (e.message,)
-                continue
-            break
+        if not append:
+            writer.writeheader()
+        
+        def write_csv(row):
+            writer.writerow(row)
+            csvfile.flush()
 
-        open(os.path.join(output_dir, photo_id + '.info.xml'), 'w').write(ElementTree.tostring(rsp, encoding='utf8', method='xml'))
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
 
-        # download sizes
-        while True:
-            try:
-                rsp = flickr.photos.getSizes(photo_id=photo_id)
-            except Exception as e:
-                print '[Error] %s.  Retrying ...' % (e.message,)
-                continue
-            break
+        count = 0
 
-        open(os.path.join(output_dir, photo_id + '.sizes.xml'), 'w').write(ElementTree.tostring(rsp, encoding='utf8', method='xml'))
+        for (photo_id, title) in uploaded_photos:
+            # download info
+            while True:
+                try:
+                    rsp = flickr.photos.getInfo(photo_id=photo_id)
+                except Exception as e:
+                    print '[Error] %s.  Retrying ...' % (e.message,)
+                    continue
+                break
 
-        largest_source = None
-        largest_label = None
-        largest_width = 0
-        largest_height = 0
-        for size in rsp.find('sizes').getchildren():
-            label = size.get('label')
-            width = int(size.get('width'))
-            height = int(size.get('height'))
-            source = size.get('source')
-            #print 'found size: %s %dx%d %s' % (label, width, height, source)
-            if (width * height) > (largest_width * largest_height):
-                largest_width = width
-                largest_height = height
-                largest_source = source
-                largest_label = label
-        #print 'URL: %s' % (largest_source,)
-        count += 1
+            open(os.path.join(output_dir, photo_id + '.info.xml'), 'w').write(ElementTree.tostring(rsp, encoding='utf8', method='xml'))
 
-        # download photo
-        while True:
-            try:
-                download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
-            except Exception as e:
-                print '[Error] %s.  Retrying ...' % (e.message,)
-                continue
-            break
+            photo_info = rsp.find('photo')
+            media = photo_info.get('media')
+            original_format = photo_info.get('originalformat')
+            url = photo_info.find('urls').find('url').text
+            server = photo_info.get('server')
+            title = photo_info.get('title')
+            description = photo_info.find('description').text
+            if description is not None:
+                description = description.strip()
+            date_taken = photo_info.find('dates').get('taken')
+            shorturl = flickrapi.shorturl.url(photo_id)
+
+            # download sizes
+            while True:
+                try:
+                    rsp = flickr.photos.getSizes(photo_id=photo_id)
+                except Exception as e:
+                    print '[Error] %s.  Retrying ...' % (e.message,)
+                    continue
+                break
+
+            open(os.path.join(output_dir, photo_id + '.sizes.xml'), 'w').write(ElementTree.tostring(rsp, encoding='utf8', method='xml'))
+
+            largest_source = None
+            largest_label = None
+            largest_width = 0
+            largest_height = 0
+            for size in rsp.find('sizes').getchildren():
+                label = size.get('label')
+                width = int(size.get('width'))
+                height = int(size.get('height'))
+                source = size.get('source')
+                #print 'found size: %s %dx%d %s' % (label, width, height, source)
+                if (width * height) > (largest_width * largest_height):
+                    largest_width = width
+                    largest_height = height
+                    largest_source = source
+                    largest_label = label
+            #print 'URL: %s' % (largest_source,)
+            count += 1
+
+            # download photo
+            while True:
+                try:
+                    relpath, abspath, filesize = download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
+                except Exception as e:
+                    print '[Error] %s.  Retrying ...' % (e.message,)
+                    continue
+                break
+            
+            filehash = None
+            with open(abspath, 'rb') as f:
+                filehash = str(hashlib.md5(f.read()).hexdigest())
+
+            row = locals()
+            write_csv(row)
 
     print '\nDone!'

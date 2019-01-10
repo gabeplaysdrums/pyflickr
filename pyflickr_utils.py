@@ -117,12 +117,13 @@ def download_url(url, filename_prefix, directory, progress_prefix=''):
     else:
         filename_ext = '.' + url.split('.')[-1]
 
-    filename = filename_prefix + filename_ext
+    relpath = filename_prefix + filename_ext
+    abspath = os.path.join(directory, relpath)
 
-    f = open(os.path.join(directory, filename), 'wb')
+    f = open(abspath, 'wb')
 
-    total_bytes = int(req.info()['Content-Length'])
-    print '%sDownloading: %s Bytes: %s' % (progress_prefix, filename, total_bytes)
+    filesize = int(req.info()['Content-Length'])
+    print '%sDownloading: %s Bytes: %s' % (progress_prefix, relpath, filesize)
 
     downloaded_bytes = 0
     block_size = 8192
@@ -133,9 +134,11 @@ def download_url(url, filename_prefix, directory, progress_prefix=''):
 
         downloaded_bytes += len(buffer)
         f.write(buffer)
-        print_progress(downloaded_bytes, total_bytes);
+        print_progress(downloaded_bytes, filesize);
 
     f.close()
+
+    return relpath, abspath, filesize
 
 import exifread
 
