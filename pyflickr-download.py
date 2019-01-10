@@ -57,7 +57,8 @@ if __name__ == "__main__":
         while True:
             try:
                 rsp = flickr.photos.getInfo(photo_id=photo_id)
-            except flickrapi.exceptions.FlickrError:
+            except Exception as e:
+                print '[Error] %s.  Retrying ...' % (e.message,)
                 continue
             break
 
@@ -67,7 +68,8 @@ if __name__ == "__main__":
         while True:
             try:
                 rsp = flickr.photos.getSizes(photo_id=photo_id)
-            except flickrapi.exceptions.FlickrError:
+            except Exception as e:
+                print '[Error] %s.  Retrying ...' % (e.message,)
                 continue
             break
 
@@ -92,6 +94,12 @@ if __name__ == "__main__":
         count += 1
 
         # download photo
-        download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
+        while True:
+            try:
+                download_url(largest_source, photo_id, output_dir, '[%d/%d] ' % (count, total_count))
+            except Exception as e:
+                print '[Error] %s.  Retrying ...' % (e.message,)
+                continue
+            break
 
     print '\nDone!'
